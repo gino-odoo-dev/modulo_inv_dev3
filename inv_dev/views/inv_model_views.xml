@@ -1,0 +1,54 @@
+<odoo>
+    <data>
+        <record id="view_product_extension_form_zpl" model="ir.ui.view">
+            <field name="name">product.extension.form.zpl</field>
+            <field name="model">product.extension.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Generar Etiqueta ZPL">
+                    <sheet>
+                        <group>
+                            <field name="id_codigo"/>
+                            <field name="id_numero"/>
+                            <field name="cantidad"/>
+                        </group>
+                        <footer>
+                            <button string="Cancelar" class="btn-secondary" special="cancel"/>
+                            <button string="Visualizar Etiqueta" type="object" name="create_and_generate_zpl" class="btn-primary" context="{'close_on_report_download': False}"/>
+                            <button string="Imprimir Etiqueta" type="object" name="print_zpl_label" class="btn-primary"/>
+                        </footer>
+                        <group>
+                            <field name="zpl_content" readonly="1" nolabel="1" widget="text"/>
+                        </group>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="view_zpl_content_form" model="ir.ui.view">
+            <field name="name">zpl.content.form</field>
+            <field name="model">product.extension.wizard</field>
+            <field name="arch" type="xml">
+                <form string="Etiqueta ZPL Generada">
+                    <sheet>
+                        <group>
+                            <field name="zpl_content" readonly="1" nolabel="1"/>
+                        </group>
+                        <footer>
+                            <button string="Cerrar" class="btn-secondary" special="cancel"/>
+                        </footer>
+                    </sheet>
+                </form>
+            </field>
+        </record>
+
+        <record id="action_generate_zpl_label" model="ir.actions.act_window">
+            <field name="name">Generar Etiqueta ZPL</field>
+            <field name="res_model">product.extension.wizard</field>
+            <field name="view_mode">form</field>
+            <field name="view_id" ref="view_product_extension_form_zpl"/>
+            <field name="target">new</field>
+        </record>
+
+        <menuitem id="menu_product_extension" name="Generar Etiqueta" parent="stock.menu_stock_inventory_control" action="action_generate_zpl_label" sequence="10"/>
+    </data>
+</odoo>

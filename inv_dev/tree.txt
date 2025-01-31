@@ -1,0 +1,13 @@
+inv_dev/
+├── __init__.py
+├── __manifest__.py
+
+└── models/
+    └── __init__.py
+    └── product_extension_wizard.py
+
+└── views/
+    └── inv_model_views.xml
+
+└── security/
+    └── ir.model.access.csv
