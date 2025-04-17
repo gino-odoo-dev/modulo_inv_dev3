@@ -1,5 +1,4 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_product_codigo,access_product_codigo,model_product_codigo,,1,1,1,1
-access_product_numero,access_product_numero,model_product_numero,,1,1,1,1
 access_product_cantidad,access_product_cantidad,model_product_cantidad,,1,1,1,1
+access_cl_product_tallas,access_cl_product_tallas,model_cl_product_tallas,,1,1,1,1
 access_product_extension_wizard,access_product_extension_wizard,model_product_extension_wizard,,1,1,1,1

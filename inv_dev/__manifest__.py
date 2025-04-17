@@ -9,6 +9,11 @@
         'security/ir.model.access.csv',
         'views/inv_model_views.xml',
     ],
+    'assets': {
+        'web.assets_backend': [
+            'inv_dev/static/src/css/style.css',
+        ],
+    },
     'installable': True,
     'application': True,
 }

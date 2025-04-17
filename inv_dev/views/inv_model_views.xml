@@ -7,14 +7,15 @@
                 <form string="Generar Etiqueta ZPL">
                     <sheet>
                         <group>
-                            <field name="id_codigo"/>
-                            <field name="id_numero"/>
-                            <field name="cantidad"/>
+                            <field name="zpl_format" widget="selection" string="Formato de Etiqueta" class="my_custom_width"/>
+                            <field name="cl_long_model" string="Articulo" required="1" class="my_custom_width" invisible="not (zpl_format == 'format3')"/>
+                            <field name="numeracion" string="Numero de Zapato" required="1" class="my_custom_width" invisible="not (zpl_format == 'format3')"/>                             
+                            <field name="cantidad" string="Cantidad" required="1" class="my_custom_width"/>
+                            <field name="color" string="Color" required="1" class="my_custom_width" invisible="1"/>
                         </group>
                         <footer>
                             <button string="Cancelar" class="btn-secondary" special="cancel"/>
-                            <button string="Visualizar Etiqueta" type="object" name="create_and_generate_zpl" class="btn-primary" context="{'close_on_report_download': False}"/>
-                            <button string="Imprimir Etiqueta" type="object" name="print_zpl_label" class="btn-primary"/>
+                            <button string="Imprimir Etiqueta" type="object" name="generador_txt_zpl" class="btn-primary"/>
                         </footer>
                         <group>
                             <field name="zpl_content" readonly="1" nolabel="1" widget="text"/>
