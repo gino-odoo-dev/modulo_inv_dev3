@@ -1,4 +1,5 @@
 id,name,model_id:id,group_id:id,perm_read,perm_write,perm_create,perm_unlink
-access_product_cantidad,access_product_cantidad,model_product_cantidad,,1,1,1,1
-access_cl_product_tallas,access_cl_product_tallas,model_cl_product_tallas,,1,1,1,1
-access_product_extension_wizard,access_product_extension_wizard,model_product_extension_wizard,,1,1,1,1
+access_product_cantidad,product.cantidad.access,model_product_cantidad,base.group_user,1,1,1,1
+access_cl_product_tallas,cl.product.tallas.access,model_cl_product_tallas,base.group_user,1,1,1,1
+access_product_extension_wizard,product.extension.wizard.access,model_product_extension_wizard,base.group_user,1,1,1,1
+access_cl_product_color,cl.product.color.access,model_cl_product_color,base.group_user,1,1,1,1

@@ -1,108 +1,195 @@
 import base64
-from odoo import models, fields, api, _ # type: ignore
-from odoo.exceptions import UserError # type: ignore
-from odoo.exceptions import ValidationError, UserError # type: ignore
 import logging
+from odoo import models, fields, api, _ # type: ignore
+from odoo.exceptions import UserError, ValidationError # type: ignore
+from odoo.tools import html2plaintext # type: ignore
 
-# Configurar el logger
 _logger = logging.getLogger(__name__)
 
-class ProductTemplate(models.Model):
+class ProductTemplateExtension(models.Model):
     _inherit = 'product.template'
-    _description = 'Product Template'
-
+    
     cl_long_model = fields.Char(string="Long Model")
     cl_short_model = fields.Char(string="Short Model")
 
-class Color(models.Model):
-    _name = 'cl.product.color' 
-    _description = 'Color' 
+class ProductColor(models.Model):
+    _name = 'cl.product.color'
+    _description = 'Product Color'
     
-    name = fields.Char(string="Color")
-    company_id = fields.Many2one('res.company', string="Company", default=lambda self: self.env.company, required=True)
+    name = fields.Char(string="Color", required=True)
     code = fields.Char(string="Codigo Color", required=True, size=2)
+    company_id = fields.Many2one('res.company', string="Compañia", default=lambda self: self.env.company, required=True)
 
-class Cantidad(models.Model):    
-    _name = 'product.cantidad' 
-    _description = 'Cantidad' 
+class ProductQuantity(models.Model):
+    _name = 'product.cantidad'
+    _description = 'Product Quantity'
     
     name = fields.Float(string="Cantidad", default=0.0)
 
-class Tallas(models.Model):
+class ProductSize(models.Model):
     _name = 'cl.product.tallas'
-    _description = 'Tallas'
+    _description = 'Product Size'
     
-    name = fields.Char(string="Talla")
+    name = fields.Char(string="Size", required=True)
     company_id = fields.Many2one('res.company', string="Company", default=lambda self: self.env.company, required=True)
 
-class ProductExtensionWizard(models.TransientModel):
-    _name = 'product.extension.wizard'  
-    _description = 'Product Extension Wizard'  
-
-    pdf_file = fields.Binary(string="PDF de Etiqueta", readonly=True)
-    pdf_filename = fields.Char(string="Nombre del Archivo")
-    cantidad = fields.Integer(string="Cantidad", default=0)
-    zpl_content = fields.Text(string="ZPL Content", readonly=True) 
+class PurchaseOrderExtension(models.Model):
+    _inherit = 'purchase.order'
     
-    numeracion = fields.Many2one('cl.product.tallas', string="Numeracion", required=True)
-    color = fields.Many2one('cl.product.color', string="Color", required=False)
-    cl_long_model = fields.Many2one('product.template', string="Modelo Largo", required=False)
-    cl_short_model = fields.Many2one('product.template', string="Modelo Corto", required=False, domain="['|', ('id', '=', cl_long_model.id), ('id', '!=', False)]")
+    name = fields.Char(string="Nombre Compañia")
 
+class ResCompanyExtension(models.Model):
+    _inherit = 'res.company'
+    
+    name = fields.Char(string="Nombre Compañia")
+    company_details = fields.Html(string="Compañia Detalles")
+
+class ProductLabelWizard(models.TransientModel):
+    _name = 'product.extension.wizard'
+    _description = 'Product Label Wizard'
+    
+    pdf_file = fields.Binary(string="Label PDF", readonly=True)
+    pdf_filename = fields.Char(string="Filename")
+    zpl_content = fields.Text(string="ZPL Content", readonly=True)
+    
+    cantidad = fields.Integer(string="Quantity", default=0)
     zpl_format = fields.Selection(
         selection=[
-            ('format1', 'Formato 1'),
-            ('format2', 'Formato 2'),
-            ('format3', 'Formato 3'),
-        ],
-        string="Formato de Etiqueta",
+            ('format1', 'Format 1'), 
+            ('format2', 'Format 2'), 
+            ('format3', 'Format 3')
+        ], 
+        string="Label Format", 
         default='format1',
         required=True
     )
+    
+    numeracion = fields.Many2one('cl.product.tallas', string="Size")
+    color = fields.Many2one('cl.product.color', string="Color")
+    cl_long_model = fields.Many2one('product.template', string="Long Model")
+    cl_short_model = fields.Many2one('product.template', string="Short Model", domain="['|', ('id', '=', cl_long_model.id), ('id', '!=', False)]")
+    
+    orden_compra = fields.Many2one('purchase.order', string="Purchase Order")
+    nombre_orden = fields.Char(string="Order Name", compute="_compute_order_name", store=True)    
+    company_id = fields.Many2one('res.company', string="Company")
+    detalle_compañia = fields.Text(string="Company Details", compute="_compute_company_details", readonly=True)
+    cl_temporada_id = fields.Many2one('cl.product.temporada', string="Temporada", compute="_compute_temporada", store=True)
+    cl_articulos_id = fields.Char(string="Articulo", compute="_compute_articulo_info", store=True)
+    cl_color_id = fields.Many2one('cl.product.color', string="Color del Producto", compute="_compute_color_from_order", store=True, readonly=True)
+    cl_ofabricacion_id = fields.Many2one('mrp.production', string="Orden de Fabricación", compute="_compute_ofabricacion", store=True, readonly=True)
 
-    @api.constrains('zpl_format', 'color', 'numeracion', 'cantidad')
+    @api.depends('orden_compra')
+    def _compute_ofabricacion(self):
+        for wizard in self:
+            wizard.cl_ofabricacion_id = False
+            if wizard.orden_compra:
+                order_lines = wizard.orden_compra.order_line
+                if order_lines:
+                    product_ids = order_lines.mapped('product_id').ids
+                    if product_ids:
+                        production_order = self.env['mrp.production'].search([
+                            ('product_id', 'in', product_ids),
+                            ('state', 'in', ['confirmed', 'progress', 'done'])  
+                        ], limit=1, order='id desc')  
+                        if production_order:
+                            wizard.cl_ofabricacion_id = production_order
+
+    @api.depends('orden_compra')
+    def _compute_articulo_info(self):
+        for record in self:
+            if record.orden_compra:
+                line = record.orden_compra.order_line.filtered(
+                    lambda l: l.product_id.cl_long_model
+                )[:1]
+                record.cl_articulos_id = line.product_id.cl_long_model if line else ''
+            else:
+                record.cl_articulos_id = ''
+
+    @api.depends('orden_compra')
+    def _compute_temporada(self):
+        for record in self:
+            if record.orden_compra:
+                line = record.orden_compra.order_line.filtered(
+                    lambda l: l.product_id.cl_temporada_id
+                )[:1]
+                record.cl_temporada_id = line.product_id.cl_temporada_id if line else False
+            else:
+                record.cl_temporada_id = False
+
+    @api.depends('orden_compra')
+    def _compute_order_name(self):
+        for record in self:
+            record.nombre_orden = record.orden_compra.company_id.name if (
+                record.orden_compra and 
+                record.orden_compra.company_id
+            ) else ''
+
+    @api.depends('company_id')
+    def _compute_company_details(self):
+        for record in self:
+            if record.company_id and record.company_id.company_details:
+                clean_text = html2plaintext(record.company_id.company_details)
+                record.detalle_compañia = ' '.join(clean_text.split()).strip()[:150] 
+            else:
+                record.detalle_compañia = ''
+
+    @api.constrains('zpl_format', 'color', 'numeracion', 'cantidad', 'orden_compra')
     def _check_required_fields(self):
         for record in self:
             if record.cantidad <= 0:
-                raise ValidationError(_("La cantidad debe ser mayor a cero para cualquier formato"))            
+                raise ValidationError(_("Quantity must be greater than zero"))
+            
+            if record.zpl_format == 'format2' and not record.orden_compra:
+                raise ValidationError(_("Purchase order is required for this format"))
+            
             if record.zpl_format == 'format3':
                 if not record.numeracion:
-                    raise ValidationError(_("El campo Numeracion es requerido para el formato seleccionado"))
+                    raise ValidationError(_("Size is required for this format"))
                 if not record.cl_long_model:
-                    raise ValidationError(_("El campo codigo largo es requerido para el formato seleccionado"))
-                
-    def _get_color(self):
+                    raise ValidationError(_("Long model is required for this format"))
+
+    def _get_color_from_model(self):
         self.ensure_one()
         if not self.cl_long_model or not self.cl_long_model.cl_long_model:
-            return ''   
+            return ''
+            
         long_model = self.cl_long_model.cl_long_model.strip()
         if len(long_model) < 2:
-            return ''  
+            return ''
+            
         color_code = long_model[-2:].upper()
         try:
             color = self.env['cl.product.color'].search([('code', '=', color_code)], limit=1)
-            if not color:
-                _logger.warning("No se encontro color con codigo: %s", color_code)
-                return color_code
-            return color.name
+            return color.name if color else color_code
         except Exception as e:
-            _logger.error("Error buscando color: %s", str(e))
+            _logger.error("Color search error: %s", str(e))
             return color_code
 
-    def generate_zpl_label(self):
+    def _generate_zpl_content(self):
         self.ensure_one()
         
         if not self._context.get('bypass_validation'):
             self._check_required_fields()
 
-        numeracion = self.numeracion.name if self.numeracion else ''
-        cantidad = max(1, self.cantidad) 
-        color = self._get_color()   
-        cl_long_model = self.cl_long_model.cl_long_model if (self.cl_long_model and self.cl_long_model.cl_long_model) else ''
-        cl_short_model = cl_long_model[:8] if cl_long_model else '' 
+        template_vars = {
+            'numeracion': self.numeracion.name if self.numeracion else '',
+            'color': self._get_color_from_model(),
+            'cl_long_model': self.cl_long_model.cl_long_model if (
+                self.cl_long_model and 
+                self.cl_long_model.cl_long_model
+            ) else '',
+            'cl_short_model': '',
+            'nombre_orden': self.nombre_orden or '',
+            'orden_compra': self.orden_compra.name if self.orden_compra else '',
+            'detalle_compañia': self.detalle_compañia or 'SIN DETALLES',
+            'temporada': self.cl_temporada_id.name if self.cl_temporada_id else '',
+            'articulo': self.cl_articulos_id if self.cl_articulos_id else '',
+            'color_nombre': self.cl_color_id.name if self.cl_color_id else '',
+            'orden_fabricacion': self.cl_ofabricacion_id.name if self.cl_ofabricacion_id else 'N/A',
+        }
         
-        _logger.debug("Generando ZPL con valores: Numeración=%s, Color=%s, Modelo Corto=%s, Modelo Largo=%s",
-                    numeracion, color, cl_short_model, cl_long_model)
+        if template_vars['cl_long_model']:
+            template_vars['cl_short_model'] = template_vars['cl_long_model'][:8]
 
         format_templates = {
             'format1': "",
@@ -129,28 +216,28 @@ class ProductExtensionWizard(models.TransientModel):
 ^FO215,500^A0R,40,40^FDO. Compra:^FS
 ^FO160,60^A0R,50,50^FDO. Fabricacion:^FS
 ^FO500,960^A0R,35,35^FDguia de entrada:^FS
-^FO720,320^A0R,50,50^FD{}^FS
-^FO670,320^A0R,50,50^FD{}^FS
-^FO620,320^A0R,50,50^FD{}{}^FS
-^FO550,320^A0R,50,50^FD{}^FS
-^FO500,320^A0R,50,50^FD{}^FS
-^FO450,320^A0R,50,50^FD{}^FS
-^FO400,320^A0R,50,50^FD{}^FS
-^FO350,320^A0R,50,50^FD{}^FS
+^FO720,320^A0R,50,50^FD{nombre_orden}^FS
+^FO670,320^A0R,50,50^FD{detalle_compañia}^FS
+^FO620,320^A0R,50,50^FD^FS
+^FO550,320^A0R,50,50^FD^FS
+^FO500,320^A0R,50,50^FD^FS
+^FO450,320^A0R,50,50^FD^FS
+^FO400,320^A0R,50,50^FD{temporada}^FS
+^FO350,320^A0R,50,50^FD{articulo}^FS
 ^FO305,320^A0R,40,40^FDKENT.^FS
-^FO255,320^A0R,40,40^FD{}^FS
+^FO255,320^A0R,40,40^FD{color_nombre}^FS
 ^FO110,210^A0R,45,45^FD3^FS
 ^FO110,300^A0R,40,23^FD36E 37E 38E^FS
 ^FO075,290^A0R,40,32^FD1 1 1^FS
-^FO215,320^A0R,40,40^FD{}^FS
-^FO215,720^A0R,40,40^FD^FS
-^FO160,370^A0R,50,50^FD{}^FS
-^FO400,980^A0R,80,50^FD{}^FS
-^FO70,950^B3N,N,100,Y^FD{}^FS
+^FO215,320^A0R,40,40^FD^FS
+^FO215,720^A0R,40,40^FD{orden_compra}^FS
+^FO160,370^A0R,50,50^FD{orden_fabricacion}^FS
+^FO400,980^A0R,80,50^FD^FS
+^FO70,950^B3N,N,100,Y^FD{orden_compra}^FS
 ^PQ1
 ^MCY
 ^XZ
-            """, 
+""",
             'format3': """
 ^XA
 ^FX
@@ -167,43 +254,45 @@ class ProductExtensionWizard(models.TransientModel):
 ^FX SKU.
 ^FO160,210^A0N,30,40^FD{cl_long_model}{numeracion}^FS
 ^XZ
-"""     .strip()
+""".strip()
         }
 
         template = format_templates.get(self.zpl_format, "").strip()
-        
         zpl_content = ""
-        for _ in range(cantidad):
-            zpl_content += template.format(
-                numeracion=numeracion,
-                color=color,
-                cl_short_model=cl_short_model,
-                cl_long_model=cl_long_model,
-            ) + "\n" 
-        
-        _logger.debug("Contenido ZPL generado:\n%s", zpl_content)
+        for _ in range(max(1, self.cantidad)):
+            zpl_content += template.format(**template_vars) + "\n"
+            
+        _logger.debug("Generated ZPL content:\n%s", zpl_content)
         return zpl_content.strip()
 
-    def generador_txt_zpl(self):
+    def generate_zpl_file(self):
         self.ensure_one()
         
         try:
-            zpl = self.generate_zpl_label()
+            zpl = self._generate_zpl_content()
             if not zpl:
-                raise UserError(_("Formato de etiqueta no válido"))
-            model_name = self.cl_long_model.cl_long_model if self.cl_long_model else 'Etiqueta'
-            filename = f"ZPL_{model_name}_{fields.Datetime.now().strftime('%Y%m%d_%H%M%S')}.txt"
-            txt_content = base64.b64encode(zpl.encode('utf-8'))
+                raise UserError(_("Invalid label format"))
+                
+            model_name = self.cl_long_model.cl_long_model if self.cl_long_model else 'Label'
+            filename = f"ZPL_{model_name}.txt"
+            
             self.write({
                 'zpl_content': zpl,
-                'pdf_file': txt_content,
+                'pdf_file': base64.b64encode(zpl.encode('utf-8')),
                 'pdf_filename': filename
             })
+            
             return {
                 'type': 'ir.actions.act_url',
-                'url': f"/web/content?model=product.extension.wizard&id={self.id}&field=pdf_file&filename_field=pdf_filename&download=true",
+                'url': (
+                    f"/web/content?model=product.extension.wizard&id={self.id}"
+                    f"&field=pdf_file&filename_field=pdf_filename&download=true"
+                ),
                 'target': 'self',
             }
         except Exception as e:
-            _logger.error("Error al generar ZPL: %s", str(e), exc_info=True)
-            raise UserError(_("Error al generar el archivo: %s") % str(e))
+            _logger.error("ZPL generation error: %s", str(e), exc_info=True)
+            raise UserError(_("File generation error: %s") % str(e))
+
+
+

@@ -11,3 +11,15 @@ inv_dev/
 
 └── security/
     └── ir.model.access.csv
+
+
+purchase_order.name ---> purchase_order_line (order_id) ---> product.product (product_id) ---> product.template (product_template_id)  
+
+product.template (company_id --> res.compan.name)
+
+
+estoy en tabla purchase.order con mi id puedo ir a la tabla purchase_order_line y en aquella 
+tabla hay un campo product_id que es el id con el que voy a buscar en la tabla mrp.production el name ,
+entonces es el que quiero mostrar en el wizard.
+
+crear campo cl_ofabricacion_id en el wizard y que se llene automaticamente al seleccionar la orden de compra.

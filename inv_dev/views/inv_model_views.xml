@@ -10,15 +10,16 @@
                             <field name="zpl_format" widget="selection" string="Formato de Etiqueta" class="my_custom_width"/>
                             <field name="cl_long_model" string="Articulo" required="1" class="my_custom_width" invisible="not (zpl_format == 'format3')"/>
                             <field name="numeracion" string="Numero de Zapato" required="1" class="my_custom_width" invisible="not (zpl_format == 'format3')"/>                             
+                            <field name="color" string="Color" required="1" invisible="1"/>
+                            <field name="orden_compra" string="Orden de Compra" required="1" class="my_custom_width" invisible="not (zpl_format == 'format2')"/>
                             <field name="cantidad" string="Cantidad" required="1" class="my_custom_width"/>
-                            <field name="color" string="Color" required="1" class="my_custom_width" invisible="1"/>
                         </group>
                         <footer>
                             <button string="Cancelar" class="btn-secondary" special="cancel"/>
-                            <button string="Imprimir Etiqueta" type="object" name="generador_txt_zpl" class="btn-primary"/>
+                            <button string="Imprimir Etiqueta" type="object" name="generate_zpl_file" class="btn-primary"/>
                         </footer>
                         <group>
-                            <field name="zpl_content" readonly="1" nolabel="1" widget="text"/>
+                            <field name="zpl_content" readonly="1" nolabel="1" widget="text" invisible="1"/>
                         </group>
                     </sheet>
                 </form>

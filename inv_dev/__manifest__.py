@@ -4,7 +4,7 @@
     'summary': 'Modulo para generar etiquetas ZPL',
     'description': ' etiquetas ZPL.',
     'author': 'MarcoAG',
-    'depends': ['product', 'stock'],
+    'depends': ['product', 'stock', 'purchase', 'sale', 'web'],
     'data': [
         'security/ir.model.access.csv',
         'views/inv_model_views.xml',
