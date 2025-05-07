@@ -12,11 +12,13 @@
                             <field name="numeracion" string="Numero de Zapato" required="1" class="my_custom_width" invisible="not (zpl_format == 'format3')"/>                             
                             <field name="color" string="Color" required="1" invisible="1"/>
                             <field name="orden_compra" string="Orden de Compra" required="1" class="my_custom_width" invisible="not (zpl_format == 'format2')"/>
-                            <field name="cantidad" string="Cantidad" required="1" class="my_custom_width"/>
+                            <field name="lote_desde" string="Lote Desde" required="1" class="my_custom_width" invisible="not (zpl_format == 'format1')"/>
+                            <field name="lote_hasta" string="Lote Hasta" required="1" class="my_custom_width" invisible="not (zpl_format == 'format1')"/>
+                            <field name="cantidad" string="Cantidad" required="1" class="my_custom_width" invisible="not (zpl_format == 'format2' or zpl_format == 'format3')"/>
                         </group>
                         <footer>
                             <button string="Cancelar" class="btn-secondary" special="cancel"/>
-                            <button string="Imprimir Etiquetas" type="object" name="generador_zpl" class="btn-primary"/>
+                            <button string="Generar Etiquetas" type="object" name="generador_zpl" class="btn-primary"/>
                         </footer>
                         <group>
                             <field name="zpl_content" readonly="1" nolabel="1" widget="text" invisible="1"/>
